@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <title>Immich Presenter</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <link rel="stylesheet" href="{{ base_path }}static/style.css" />
+</head>
+<body>
+  <div id="app">
+    <div id="grid" class="hidden"></div>
+    <img id="image" alt="" />
+
+    <div id="topbar">
+      <span id="albumName"></span>
+      <span id="counter"></span>
+    </div>
+
+    <div id="desc" class="hidden"></div>
+
+    <div id="editor" class="hidden">
+      <div id="editorBox">
+        <div id="editorTitle">Édition de la description</div>
+        <textarea id="editText" rows="4" spellcheck="true"></textarea>
+        <div id="editorHelp">
+          Ctrl+E : enregistrer — Esc : annuler
+        </div>
+      </div>
+    </div>
+
+    <div id="loading">Chargement…</div>
+    <div id="error" class="hidden"></div>
+  </div>
+
+  <script>
+    window.BASE_PATH = "{{ base_path }}";
+  </script>
+  <script src="{{ base_path }}static/app.js"></script>
+</body>
+</html>

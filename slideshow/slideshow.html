@@ -1,0 +1,149 @@
+<script>
+  const SLIDE_DURATION = 6000;
+  const TRANSITIONS = ["fade-in", "slide-left", "zoom-in"];
+
+  let assets = [];
+  let currentIndex = 0;
+  let timer = null;
+
+  const statusEl = document.getElementById("status");
+  const imgEl = document.getElementById("slide-image");
+  const startBtn = document.getElementById("startBtn");
+  const maxAssetsInput = document.getElementById("maxAssets");
+
+  function logStatus(text) {
+    statusEl.textContent = text;
+    console.log(text);
+  }
+
+  async function fetchAssets(maxAssets) {
+    logStatus("Récupération de la liste des photos…");
+
+    // 1) API random moderne
+    try {
+      const resRandom = await fetch("/api/search/random", {
+        method: "POST",
+        credentials: "include",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          size: maxAssets
+        })
+      });
+
+      if (resRandom.ok) {
+        const data = await resRandom.json();
+        if (Array.isArray(data) && data.length > 0) {
+          console.log("Utilisation de /api/search/random");
+          return data.filter(a => (a.type || a.assetType || "").toUpperCase() === "IMAGE");
+        }
+      } else {
+        console.warn("search/random a répondu", resRandom.status);
+      }
+    } catch (e) {
+      console.warn("Impossible d'utiliser /api/search/random :", e);
+    }
+
+    // 2) Fallback : search/metadata avec tri aléatoire
+    const resSearch = await fetch("/api/search/metadata", {
+      method: "POST",
+      credentials: "include",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        size: maxAssets,
+        page: 1,
+        order: "rand",
+        type: "IMAGE",
+        withArchived: false
+      })
+    });
+
+    if (!resSearch.ok) {
+      throw new Error("Erreur lors de l'appel à /api/search/metadata : " + resSearch.status);
+    }
+
+    const data = await resSearch.json();
+
+    // selon versions, les assets peuvent être dans data.assets.items ou data.assets
+    const items =
+      data?.assets?.items ??
+      data?.assets ??
+      data?.items ??
+      [];
+
+    if (!Array.isArray(items) || items.length === 0) {
+      throw new Error("Aucune image trouvée via /api/search/metadata");
+    }
+
+    return items;
+  }
+
+  function getPreviewUrl(asset) {
+    const id = asset.id || asset.assetId;
+    return `/api/assets/${id}/thumbnail?size=preview`;
+  }
+
+  function showNext() {
+    if (assets.length === 0) {
+      logStatus("Aucun asset à afficher.");
+      return;
+    }
+
+    const asset = assets[currentIndex];
+    const url = getPreviewUrl(asset);
+
+    logStatus(
+      `Affichage ${currentIndex + 1}/${assets.length}\n` +
+      `ID: ${asset.id || asset.assetId}\n` +
+      `URL: ${url}`
+    );
+
+    imgEl.classList.remove(...TRANSITIONS);
+    const transition = TRANSITIONS[Math.floor(Math.random() * TRANSITIONS.length)];
+    imgEl.style.opacity = 0;
+
+    imgEl.onload = () => {
+      imgEl.classList.add(transition);
+      imgEl.style.opacity = 1;
+    };
+
+    imgEl.onerror = () => {
+      console.warn("Erreur de chargement d'image:", url);
+      logStatus(`Erreur de chargement:\n${url}\nOn passe à la suivante…`);
+    };
+
+    imgEl.src = url;
+    currentIndex = (currentIndex + 1) % assets.length;
+  }
+
+  async function startSlideshow() {
+    const maxAssets = parseInt(maxAssetsInput.value, 10) || 500;
+
+    if (timer) {
+      clearInterval(timer);
+      timer = null;
+    }
+
+    try {
+      assets = await fetchAssets(maxAssets);
+
+      if (!assets.length) {
+        logStatus("Aucune photo trouvée.");
+        return;
+      }
+
+      logStatus(`Photos chargées : ${assets.length}. Diaporama en cours…`);
+      currentIndex = 0;
+      showNext();
+      timer = setInterval(showNext, SLIDE_DURATION);
+    } catch (err) {
+      console.error(err);
+      logStatus("Erreur : " + err.message);
+    }
+  }
+
+  startBtn.addEventListener("click", startSlideshow);
+</script>
