@@ -119,7 +119,7 @@ def asset_to_simple(asset):
         "id": asset["id"],
         "originalFileName": asset.get("originalFileName", ""),
         "originalPath": original_path,
-        "description": xmp_description or asset.get("description") or "",
+        "description": xmp_description or asset.get("description") or (asset.get("exifInfo") or {}).get("description") or "",
         "type": asset.get("type", ""),
     }
 
@@ -149,6 +149,34 @@ def flatten_shared_link_assets(shared_link):
     return unique
 
 
+def get_album_images(album_id):
+    """Immich 3 : rechercher toutes les pages de photos de cet album."""
+    assets = []
+    seen = set()
+    page = 1
+    while True:
+        response = requests.post(
+            IMMICH_URL + "/search/metadata",
+            headers=HEADERS,
+            json={"albumIds": [album_id], "type": "IMAGE", "withExif": True,
+                  "withDeleted": False, "size": 1000, "page": page},
+            timeout=30,
+        )
+        response.raise_for_status()
+        result = response.json()["assets"]
+        for asset in result["items"]:
+            if asset.get("type") == "IMAGE" and asset["id"] not in seen:
+                assets.append(asset_to_simple(asset))
+                seen.add(asset["id"])
+        next_page = result.get("nextPage")
+        if next_page is None:
+            return assets
+        next_page = int(next_page)
+        if next_page <= page:
+            raise RuntimeError("Pagination Immich invalide")
+        page = next_page
+
+
 def get_assets_from_share(share_key):
     cache_key = f"share:{share_key}"
     if cache_key in _cache_by_source:
@@ -164,20 +192,16 @@ def get_assets_from_share(share_key):
 
     assets = flatten_shared_link_assets(shared_link)
 
-    # Si c'est un partage d'album, Immich peut renvoyer assetCount mais pas la liste des assets.
-    # Dans ce cas, on récupère le détail complet de l'album via l'API authentifiée.
+    # Immich 3 ne fournit plus les assets dans le détail de l'album.
     album = shared_link.get("album")
     if not assets and album and album.get("id"):
-        album_details = immich_get(f"/albums/{album['id']}")
-        for asset in album_details.get("assets", []) or []:
-            if asset.get("type") == "IMAGE":
-                assets.append(asset_to_simple(asset))
+        assets = get_album_images(album["id"])
 
     assets.sort(key=lambda a: a.get("originalFileName", "").lower())
 
     result = {
         "sourceName": shared_link.get("description")
-        or shared_link.get("album", {}).get("albumName")
+        or (shared_link.get("album") or {}).get("albumName")
         or "Partage Immich",
         "assets": assets,
         "allowedAssetIds": {asset["id"] for asset in assets},
@@ -200,12 +224,7 @@ def get_assets_from_album(album_name):
         return _cache_by_source[cache_key]
 
     album = get_album_by_name(album_name)
-    details = immich_get(f"/albums/{album['id']}")
-    assets = []
-
-    for asset in details.get("assets", []) or []:
-        if asset.get("type") == "IMAGE":
-            assets.append(asset_to_simple(asset))
+    assets = get_album_images(album["id"])
 
     result = {
         "sourceName": album_name,
