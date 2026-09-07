@@ -1,0 +1,16 @@
+[Unit]
+Description=Immich Presenter
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=ubuntu
+Group=ubuntu
+WorkingDirectory=/opt/immich_presenter
+ExecStart=/usr/bin/python3 /opt/immich_presenter/server.py
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
