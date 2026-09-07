@@ -5,3 +5,6 @@ __pycache__/
 *.py[cod]
 .venv/
 *.bak
+
+*.bak[0-9]*
+*.before_*
