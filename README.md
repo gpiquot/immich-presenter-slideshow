@@ -1,5 +1,15 @@
 # Immich Presenter et Slideshow
 
+## État actuel : Immich 3.3.3
+
+Le 17 octobre 2026, les contrôles de lecture API et de partage ont réussi après mise à jour du serveur vers Immich 3.3.3. L'utilisateur confirme le fonctionnement de Presenter et du diaporama. Le code Presenter n'a pas été modifié pendant cette mise à jour ; il reprend l'adaptation Immich 3.1.0 du commit 0e9d1aa.
+
+Voir [les résultats, les limites et la procédure de mise à jour](docs/COMPATIBILITE-IMMICH-3.3.3.md).
+
+Le diaporama possède son propre ordre dans Presenter. Le patch de tri quotidien de l'interface web Immich est un projet distinct : `gpiquot/chronologie-quotidienne-naturelle`.
+
+## Référence historique Immich 2.7.5
+
 Sources de référence utilisées avec Immich 2.7.5, conservées avant
 la préparation de l'upgrade vers Immich 3.1.2.
 
